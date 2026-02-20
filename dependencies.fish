@@ -1,18 +1,5 @@
 #!/usr/bin/env fish
 
-set options 'h/help' 'i/install'
-
-function print_help
-    echo "Check dependency programs" >&2
-    echo "Usage: dependencies" \
-        "[-h | --help]" \
-        "[-i | --install]" \
-        "program1 [program2, program3, ...]" >&2
-    echo -es \
-        "-h, --help\t\tPrint this help\n" \
-        "-i, --install\t\tTry installing missing dependencies" >&2
-end
-
 function try_installing
     echo "Installation is not implemented"
     return 1
@@ -40,10 +27,16 @@ function check_dependencies
 end
 
 function main
+    set options 'h/help' 'i/install'
     argparse $options -- $argv || return 1
 
     if set -q _flag_help
-        print_help
+        print_help \
+            --name (status basename) \
+            --description "Check dependency program availability" \
+            --flag="h/help//Print help message" \
+            --flag="i/install//Try installing missing dependencies" \
+            --args="program1 [program2, program3, ...]"
         return
     end
 
