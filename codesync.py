@@ -82,15 +82,15 @@ class Repository:
             capture_output=True,
             text=True,
         )
-        log.info(result)
+        log.debug(result)
 
         return result
 
-    def fetch(self, cmd_args: Optional[list[str]] = None) -> None:
-        self.command('fetch', cmd_args)
+    def fetch(self) -> None:
+        self.command('fetch', [self.remote, self.branch])
 
-    def push(self, cmd_args: Optional[list[str]] = None) -> None:
-        self.command('push', cmd_args)
+    def push(self) -> None:
+        self.command('push', [self.remote, self.branch])
 
     def is_inside_work_tree(self) -> bool:
         return self.command('rev-parse').returncode == 0
@@ -123,7 +123,7 @@ def process_repo(repo: Repository):
         repo.push()
 
 def main():
-    log.basicConfig(level=log.INFO)
+    log.basicConfig(level=log.DEBUG)
     check_git_executable()
 
     config_dir = Path.home() / '.config' / 'codesync'
