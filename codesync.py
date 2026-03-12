@@ -200,7 +200,7 @@ def process_repo(repo: Repository):
         else:
             raise GitException("Unknown mode")
     else:
-        log.warn(f'No remote found ({repo})')
+        log.warning(f'No remote found ({repo})')
 
 
 def setup_logs(level: logging._Level = logging.WARNING):
