@@ -11,6 +11,9 @@ import subprocess
 
 log: logging.Logger = logging.getLogger(__name__)
 
+class ConfigException(Exception):
+    pass
+
 class AnsiColors(str, Enum):
     RED = '\033[31m'
     YELLOW = '\033[33m'
@@ -56,7 +59,9 @@ class Repository:
             for arg in args:
                 if '=' in arg:
                     key, value = arg.split("=", 1)
-                    self.args.append(f'{key}={str(Path(value).expanduser())}')
+                    expanded_path_value = str(Path(value).expanduser())
+                    self.args.append(f'{key}={expanded_path_value}')
+                    log.debug(f'Expanded path argument "{value}" into "{expanded_path_value}"')
                 else:
                     self.args.append(arg)
 
@@ -78,7 +83,7 @@ class Repository:
     @classmethod
     def from_dict(cls, data: dict) -> "Repository":
         if 'path' not in data:
-            raise KeyError('No path found')
+            raise ConfigException('No path found')
 
         return cls(
             path = data.get('path'),
@@ -124,10 +129,11 @@ def check_git_executable() -> None:
         sys.exit('Git not found')
 
 def read_config(path: Path) -> list[Repository]:
+    log.debug(f'Reading config file "{path}"')
     with open(path) as file:
         config = json.load(file)
         if not isinstance(config, list):
-            raise ValueError('Wrong config format')
+            raise ConfigException('Wrong config format')
         return [Repository.from_dict(entry) for entry in config]
 
 def process_repo(repo: Repository):
@@ -156,15 +162,20 @@ def main():
     check_git_executable()
 
     config_dir = Path.home() / '.config' / 'codesync'
+    log.debug(f'Config dir "{config_dir}"')
+
     for config_path in config_dir.glob('**/*.json'):
         try:
             config = read_config(config_path)
-        except Exception as e:
-            log.error(e)
-            continue
 
-        for repo in config:
-            process_repo(repo)
+            for repo in config:
+                process_repo(repo)
+        except ConfigException as error:
+            log.error(f'{error} (config file "{config_path}")')
+            continue
+        except Exception as error:
+            log.error(f'{error}')
+            continue
 
 
 if __name__ == '__main__':
