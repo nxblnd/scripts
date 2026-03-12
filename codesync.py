@@ -16,6 +16,10 @@ class ConfigException(Exception):
     pass
 
 
+class GitException(Exception):
+    pass
+
+
 class AnsiColors(str, Enum):
     RED = "\033[31m"
     YELLOW = "\033[33m"
@@ -40,15 +44,25 @@ class ColorFormatter(logging.Formatter):
 class GitMode(str, Enum):
     FETCH = "fetch"
     PUSH = "push"
+    CLONE = "clone"
 
 
 class Repository:
     path: Path
+    run_path: Path
     url: Optional[str]
     remote: Optional[str]
     branch: Optional[str]
     mode: GitMode
     args: Optional[list[str]]
+
+    @property
+    def run_path(self) -> Path:
+        if not self.path.is_dir():
+            log.warning(f'"{self.path}" is not a directory')
+            return Path.home()
+        else:
+            return self.path
 
     def __init__(
         self,
@@ -116,6 +130,7 @@ class Repository:
             args=data.get("args"),
         )
 
+
     def command(
         self, cmd: str, cmd_args: Optional[list[str]] = None
     ) -> subprocess.CompletedProcess:
@@ -125,7 +140,7 @@ class Repository:
 
         result = subprocess.run(
             full_cmd,
-            cwd=self.path,
+            cwd=self.run_path,
             capture_output=True,
             text=True,
         )
@@ -143,11 +158,21 @@ class Repository:
         branch = self.branch if branch is None else branch
         self.command("push", [remote, branch])
 
+    def clone(self, url: Optional[str] = None, path: Optional[Path] = None) -> None:
+        url = self.url if url is None else url
+        path = self.path if path is None else path
+        self.command("clone", [url, path])
+
     def is_inside_work_tree(self) -> bool:
         return self.command("rev-parse").returncode == 0
 
     def config(self, cmd_args: Optional[list[str]] = None) -> str:
+        cmd_args = [] if cmd_args is None else cmd_args
         return self.command("config", cmd_args).stdout
+
+
+def is_dir_empty(dir: Path) -> bool:
+    return not any(dir.iterdir())
 
 
 def check_git_executable() -> None:
@@ -167,14 +192,22 @@ def read_config(path: Path) -> list[Repository]:
 def process_repo(repo: Repository):
     log.info(repo)
 
-    if not repo.is_inside_work_tree():
-        raise Exception(f"{repo.path} is not a git repo")
+    if repo.url:
+        if not repo.path.is_dir() or is_dir_empty(repo.path):
+            repo.clone()
+            return
+        if not repo.is_inside_work_tree():
+            raise GitException(f"{repo.path} is not a git repo")
 
-    if repo.mode == GitMode.FETCH:
-        repo.fetch()
-    if repo.mode == GitMode.PUSH:
-        repo.fetch()
-        repo.push()
+        if repo.mode == GitMode.FETCH:
+            repo.fetch()
+        elif repo.mode == GitMode.PUSH:
+            repo.fetch()
+            repo.push()
+        else:
+            raise GitException("Unknown mode")
+    else:
+        log.warn(f'No remote found ({repo})')
 
 
 def setup_logs(level: logging._Level = logging.WARNING):
