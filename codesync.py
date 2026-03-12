@@ -123,7 +123,6 @@ class Repository:
             args=data.get("args"),
         )
 
-
     def command(
         self, cmd: str, cmd_args: Optional[list[str]] = None
     ) -> subprocess.CompletedProcess:
@@ -200,7 +199,7 @@ def process_repo(repo: Repository):
         else:
             raise GitException("Unknown mode")
     else:
-        log.warning(f'No remote found ({repo})')
+        log.warning(f"No remote found ({repo})")
 
 
 def setup_logs(level: logging._Level = logging.WARNING):
