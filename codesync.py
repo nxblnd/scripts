@@ -5,9 +5,29 @@ import sys
 import json
 from pathlib import Path
 from enum import Enum
-import logging as log
+import logging
 from typing import Optional
 import subprocess
+
+log: logging.Logger = logging.getLogger(__name__)
+
+class AnsiColors(str, Enum):
+    RED = '\033[31m'
+    YELLOW = '\033[33m'
+    CYAN = '\033[36m'
+    RESET = '\033[0m'
+
+class LogLevelColors(Enum):
+    CRITICAL = AnsiColors.RED.value
+    ERROR = AnsiColors.RED.value
+    WARNING = AnsiColors.YELLOW.value
+    INFO = AnsiColors.CYAN.value
+    DEBUG = AnsiColors.RESET.value
+
+class ColorFormatter(logging.Formatter):
+    def format(self, record):
+        record.levelname = f'{LogLevelColors[record.levelname].value}{record.levelname}{AnsiColors.RESET.value}'
+        return super().format(record)
 
 class GitMode(str, Enum):
     FETCH = 'fetch'
@@ -122,8 +142,17 @@ def process_repo(repo: Repository):
         repo.fetch()
         repo.push()
 
+def setup_logs(level: logging._Level = logging.WARNING):
+    log.setLevel(level)
+
+    formatter = ColorFormatter('[%(levelname)s]\t%(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+
 def main():
-    log.basicConfig(level=log.DEBUG)
+    setup_logs(logging.DEBUG)
+
     check_git_executable()
 
     config_dir = Path.home() / '.config' / 'codesync'
