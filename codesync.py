@@ -91,17 +91,9 @@ class Repository:
                 else:
                     self.args.append(arg)
 
-        self.branch = (
-            self.config(["init.defaultBranch"]).strip() if branch is None else branch
-        )
-        self.remote = (
-            self.config([f"branch.{self.branch}.remote"]).strip()
-            if remote is None
-            else remote
-        )
-        self.url = (
-            self.config([f"remote.{self.remote}.url"]).strip() if url is None else url
-        )
+        self.branch = branch or self.config(["init.defaultBranch"]).strip()
+        self.remote = remote or self.config([f"branch.{self.branch}.remote"]).strip()
+        self.url = url or self.config([f"remote.{self.remote}.url"]).strip()
         self.mode = mode
 
     def __repr__(self):
@@ -151,25 +143,25 @@ class Repository:
         return result
 
     def fetch(self, remote: Optional[str] = None, branch: Optional[str] = None) -> None:
-        remote = self.remote if remote is None else remote
-        branch = self.branch if branch is None else branch
+        remote = remote or self.remote
+        branch = branch or self.branch
         self.command("fetch", [remote, branch])
 
     def push(self, remote: Optional[str] = None, branch: Optional[str] = None) -> None:
-        remote = self.remote if remote is None else remote
-        branch = self.branch if branch is None else branch
+        remote = remote or self.remote
+        branch = branch or self.branch
         self.command("push", [remote, branch])
 
     def clone(self, url: Optional[str] = None, path: Optional[Path] = None) -> None:
-        url = self.url if url is None else url
-        path = self.path if path is None else path
+        url = url or self.url
+        path = path or self.path
         self.command("clone", [url, path])
 
     def is_inside_work_tree(self) -> bool:
         return self.command("rev-parse").returncode == 0
 
     def config(self, cmd_args: Optional[list[str]] = None) -> str:
-        cmd_args = [] if cmd_args is None else cmd_args
+        cmd_args = cmd_args or []
         return self.command("config", cmd_args).stdout
 
 
