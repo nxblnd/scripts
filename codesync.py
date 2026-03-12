@@ -8,6 +8,7 @@ from enum import Enum
 import logging
 from typing import Optional
 import subprocess
+from dataclasses import dataclass, field
 
 log: logging.Logger = logging.getLogger(__name__)
 
@@ -49,13 +50,14 @@ class GitMode(str, Enum):
     CLONE = "clone"
 
 
+@dataclass
 class Repository:
     path: Path
-    url: Optional[str]
-    remote: Optional[str]
-    branch: Optional[str]
-    mode: GitMode
-    args: Optional[list[str]]
+    url: Optional[str] = None
+    remote: Optional[str] = None
+    branch: Optional[str] = None
+    mode: GitMode = GitMode.FETCH
+    args: Optional[list[str]] = field(default_factory=list)
 
     @property
     def run_path(self) -> Path:
@@ -65,49 +67,25 @@ class Repository:
         else:
             return self.path
 
-    def __init__(
-        self,
-        path: str | Path,
-        url: Optional[str] = None,
-        remote: Optional[str] = None,
-        branch: Optional[str] = None,
-        mode: GitMode = GitMode.FETCH,
-        args: Optional[list[str]] = None,
-    ) -> None:
+    def __post_init__(self) -> None:
+        self.path = Path(self.path).expanduser()
 
-        self.path = Path(path).expanduser()
+        expanded_args = []
+        for arg in self.args:
+            if "=" in arg:
+                key, value = arg.split("=", 1)
+                expanded_path_value = str(Path(value).expanduser())
+                expanded_args.append(f"{key}={expanded_path_value}")
+                log.debug(
+                    f'Expanded path argument "{value}" into "{expanded_path_value}"'
+                )
+            else:
+                expanded_args.append(arg)
+        self.args = expanded_args
 
-        self.args = []
-        if args is not None:
-            for arg in args:
-                if "=" in arg:
-                    key, value = arg.split("=", 1)
-                    expanded_path_value = str(Path(value).expanduser())
-                    self.args.append(f"{key}={expanded_path_value}")
-                    log.debug(
-                        f'Expanded path argument "{value}" into "{expanded_path_value}"'
-                    )
-                else:
-                    self.args.append(arg)
-
-        self.branch = branch or self.config(["init.defaultBranch"]).strip()
-        self.remote = remote or self.config([f"branch.{self.branch}.remote"]).strip()
-        self.url = url or self.config([f"remote.{self.remote}.url"]).strip()
-        self.mode = mode
-
-    def __repr__(self):
-        return "".join(
-            [
-                "Repository(",
-                f'path="{self.path}", ',
-                f'url="{self.url}", ',
-                f'remote="{self.remote}", ',
-                f'branch="{self.branch}", ',
-                f"mode={self.mode}, ",
-                f"args={self.args}",
-                ")",
-            ]
-        )
+        self.branch = self.branch or self.config(["init.defaultBranch"]).strip()
+        self.remote = self.remote or self.config([f"branch.{self.branch}.remote"]).strip()
+        self.url = self.url or self.config([f"remote.{self.remote}.url"]).strip()
 
     @classmethod
     def from_dict(cls, data: dict) -> "Repository":
@@ -120,7 +98,7 @@ class Repository:
             remote=data.get("remote"),
             branch=data.get("branch"),
             mode=GitMode(data.get("mode", GitMode.FETCH)),
-            args=data.get("args"),
+            args=data.get("args", []),
         )
 
     def command(
