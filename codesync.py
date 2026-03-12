@@ -37,7 +37,9 @@ class LogLevelColors(Enum):
 
 class ColorFormatter(logging.Formatter):
     def format(self, record):
-        record.levelname = f"{LogLevelColors[record.levelname].value}{record.levelname}{AnsiColors.RESET.value}"
+        padded_levelname = f"{record.levelname:^7}"
+        color = LogLevelColors[record.levelname].value
+        record.levelname = f"{color}{padded_levelname}{AnsiColors.RESET.value}"
         return super().format(record)
 
 
@@ -213,7 +215,7 @@ def process_repo(repo: Repository):
 def setup_logs(level: logging._Level = logging.WARNING):
     log.setLevel(level)
 
-    formatter = ColorFormatter("[%(levelname)s]\t%(message)s")
+    formatter = ColorFormatter("[%(levelname)s]  %(message)s")
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     log.addHandler(handler)
