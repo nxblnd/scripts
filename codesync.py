@@ -133,11 +133,15 @@ class Repository:
 
         return result
 
-    def fetch(self) -> None:
-        self.command("fetch", [self.remote, self.branch])
+    def fetch(self, remote: Optional[str] = None, branch: Optional[str] = None) -> None:
+        remote = self.remote if remote is None else remote
+        branch = self.branch if branch is None else branch
+        self.command("fetch", [remote, branch])
 
-    def push(self) -> None:
-        self.command("push", [self.remote, self.branch])
+    def push(self, remote: Optional[str] = None, branch: Optional[str] = None) -> None:
+        remote = self.remote if remote is None else remote
+        branch = self.branch if branch is None else branch
+        self.command("push", [remote, branch])
 
     def is_inside_work_tree(self) -> bool:
         return self.command("rev-parse").returncode == 0
