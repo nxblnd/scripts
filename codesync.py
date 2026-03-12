@@ -157,7 +157,7 @@ class Repository:
         self.command("clone", [url, path])
 
     def is_inside_work_tree(self) -> bool:
-        return self.command("rev-parse").returncode == 0
+        return self.command("rev-parse", ["--is-inside-work-tree"]).returncode == 0
 
     def config(self, cmd_args: Optional[list[str]] = None) -> str:
         cmd_args = cmd_args or []
