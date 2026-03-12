@@ -9,7 +9,9 @@ import logging
 from typing import Optional
 import subprocess
 from dataclasses import dataclass, field
+import argparse
 
+VERSION = '1.0.0'
 log: logging.Logger = logging.getLogger(__name__)
 
 
@@ -34,6 +36,14 @@ class LogLevelColors(Enum):
     WARNING = AnsiColors.YELLOW.value
     INFO = AnsiColors.CYAN.value
     DEBUG = AnsiColors.RESET.value
+
+
+class LogLevel(Enum):
+    CRITICAL = logging.CRITICAL
+    ERROR = logging.ERROR
+    WARNING = logging.WARNING
+    INFO = logging.INFO
+    DEBUG = logging.DEBUG
 
 
 class ColorFormatter(logging.Formatter):
@@ -84,7 +94,9 @@ class Repository:
         self.args = expanded_args
 
         self.branch = self.branch or self.config(["init.defaultBranch"]).strip()
-        self.remote = self.remote or self.config([f"branch.{self.branch}.remote"]).strip()
+        self.remote = (
+            self.remote or self.config([f"branch.{self.branch}.remote"]).strip()
+        )
         self.url = self.url or self.config([f"remote.{self.remote}.url"]).strip()
 
     @classmethod
@@ -180,7 +192,7 @@ def process_repo(repo: Repository):
         log.warning(f"No remote found ({repo})")
 
 
-def setup_logs(level: logging._Level = logging.WARNING):
+def setup_logs(level: LogLevel = logging.WARNING):
     log.setLevel(level)
 
     formatter = ColorFormatter("[%(levelname)s]  %(message)s")
@@ -189,26 +201,65 @@ def setup_logs(level: logging._Level = logging.WARNING):
     log.addHandler(handler)
 
 
-def main():
-    setup_logs(logging.DEBUG)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="codesync",
+        description="Sync git repos based on config file",
+        add_help=True,
+    )
 
-    check_git_executable()
+    parser.add_argument(
+        "-l",
+        "--level",
+        default=LogLevel.INFO.name,
+        choices=[
+            LogLevel.DEBUG.name,
+            LogLevel.INFO.name,
+            LogLevel.WARNING.name,
+            LogLevel.ERROR.name,
+        ],
+        help="Log level",
+    )
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {VERSION}')
 
-    config_dir = Path.home() / ".config" / "codesync"
-    log.debug(f'Config dir "{config_dir}"')
+    config_group = parser.add_mutually_exclusive_group()
+    config_group.add_argument(
+        "-d",
+        "--config-dir",
+        type=Path,
+        default=Path.home() / ".config" / "codesync",
+        help="Config directory",
+    )
+    config_group.add_argument("-c", "--config", type=Path, help="Config file")
 
-    for config_path in config_dir.glob("**/*.json"):
+    return parser.parse_args(sys.argv[1:])
+
+
+def process_config(config_dir: Optional[Path], config_path: Optional[Path]) -> None:
+    if config_dir is None and config_path is None:
+        raise ConfigException("No config provided")
+
+    config_paths = config_dir.glob("**/*.json") if config_dir else [config_path]
+
+    for path in config_paths:
         try:
-            config = read_config(config_path)
+            config = read_config(path)
 
             for repo in config:
                 process_repo(repo)
         except ConfigException as error:
-            log.error(f'{error} (config file "{config_path}")')
+            log.error(f'{error} (config file "{path}")')
             continue
         except Exception as error:
             log.error(f"{error}")
             continue
+
+
+def main():
+    args = parse_args()
+    setup_logs(args.level)
+    check_git_executable()
+    process_config(args.config_dir, args.config)
 
 
 if __name__ == "__main__":
