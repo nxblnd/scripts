@@ -51,7 +51,6 @@ class GitMode(str, Enum):
 
 class Repository:
     path: Path
-    run_path: Path
     url: Optional[str]
     remote: Optional[str]
     branch: Optional[str]
