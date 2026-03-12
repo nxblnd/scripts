@@ -68,6 +68,8 @@ class Repository:
     branch: Optional[str] = None
     mode: GitMode = GitMode.FETCH
     args: Optional[list[str]] = field(default_factory=list)
+    dry_run: bool = False
+    dry_run_commands = [GitMode.FETCH.value, GitMode.CLONE.value, GitMode.PUSH.value]
 
     @property
     def run_path(self) -> Path:
@@ -119,6 +121,9 @@ class Repository:
         if cmd_args is None:
             cmd_args = []
         full_cmd = ["git", *self.args, cmd, *cmd_args]
+
+        if cmd in self.dry_run_commands:
+            log.info(f'Pretending to run "{' '.join(full_cmd)}" in "{self.path}"')
 
         result = subprocess.run(
             full_cmd,
@@ -221,6 +226,7 @@ def parse_args() -> argparse.Namespace:
         help="Log level",
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {VERSION}')
+    parser.add_argument('--dry-run', action='store_true', help="Print what codesync will do without fetching any changes")
 
     config_group = parser.add_mutually_exclusive_group()
     config_group.add_argument(
@@ -235,7 +241,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args(sys.argv[1:])
 
 
-def process_config(config_dir: Optional[Path], config_path: Optional[Path]) -> None:
+def process_config(config_dir: Optional[Path], config_path: Optional[Path], is_dry_run: bool = False) -> None:
     if config_dir is None and config_path is None:
         raise ConfigException("No config provided")
 
@@ -246,6 +252,7 @@ def process_config(config_dir: Optional[Path], config_path: Optional[Path]) -> N
             config = read_config(path)
 
             for repo in config:
+                repo.dry_run = is_dry_run
                 process_repo(repo)
         except ConfigException as error:
             log.error(f'{error} (config file "{path}")')
@@ -259,7 +266,7 @@ def main():
     args = parse_args()
     setup_logs(args.level)
     check_git_executable()
-    process_config(args.config_dir, args.config)
+    process_config(args.config_dir, args.config, is_dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
