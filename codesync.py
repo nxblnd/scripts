@@ -10,6 +10,7 @@ from typing import Optional
 import subprocess
 from dataclasses import dataclass, field
 import argparse
+import signal
 
 VERSION = '1.0.0'
 log: logging.Logger = logging.getLogger(__name__)
@@ -262,7 +263,14 @@ def process_config(config_dir: Optional[Path], config_path: Optional[Path], is_d
             continue
 
 
+def sigint_handler(signum, frame) -> None:
+    log.info('Shutting down')
+    sys.exit()
+
+
+
 def main():
+    signal.signal(signal.SIGINT, sigint_handler)
     args = parse_args()
     setup_logs(args.level)
     check_git_executable()
