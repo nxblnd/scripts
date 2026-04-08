@@ -23,6 +23,12 @@ function velocity
         sort | uniq -c
 end
 
+function buggy-files
+    git rev-list --regexp-ignore-case --extended-regexp --grep='fix|bug|broken' HEAD |
+        git diff-tree --stdin --name-only --no-commit-id -r |
+        sort | uniq -c | sort -nr
+end
+
 function main
     switch $argv[1]
         case init
@@ -31,6 +37,8 @@ function main
             churn
         case velocity
             velocity
+        case buggy-files
+            buggy-files
         case *
             echo "Unknown subcommand"
             exit 1
