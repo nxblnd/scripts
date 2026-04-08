@@ -11,10 +11,18 @@ function init -a name
     git commit -m "Initial commit" --allow-empty
 end
 
+function churn
+    git rev-list --since="1 year ago" HEAD | \
+        git diff-tree --stdin --name-only --no-commit-id -r | \
+        sort | uniq -c | sort -nr
+end
+
 function main
     switch $argv[1]
         case init
             init $argv[2..]
+        case churn
+            churn
         case *
             echo "Unknown subcommand"
             exit 1
