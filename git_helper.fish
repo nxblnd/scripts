@@ -17,12 +17,20 @@ function churn
         sort | uniq -c | sort -nr
 end
 
+function velocity
+    git rev-list HEAD | \
+        git show --stdin --no-patch --format='%cd' --date='format:%Y-%m' | \
+        sort | uniq -c
+end
+
 function main
     switch $argv[1]
         case init
             init $argv[2..]
         case churn
             churn
+        case velocity
+            velocity
         case *
             echo "Unknown subcommand"
             exit 1
