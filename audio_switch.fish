@@ -17,17 +17,18 @@ function main
     if test "$current_port" = "$headphones"
         set next_port "$speakers"
         set ee_preset "$eq_correction_preset"
-        echo "Playing from speakers 🔈"
+        set log_text "Playing from speakers 🔈"
     else
         set next_port "$headphones"
         set ee_preset "$basic_preset"
-        echo "Playing in headphones 🎧"
+        set log_text "Playing in headphones 🎧"
     end
 
     set next_port_id (echo "$device_dump" | jq ".info.params.EnumRoute[] | select(.name == \"$next_port\") | .index")
 
     pw-cli set-param "$device_id" Route "{\"index\": $next_port_id, \"device\": $current_device}" > /dev/null
     easyeffects --load-preset "$ee_preset"
+    echo "$log_text"
 end
 
 main
