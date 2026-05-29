@@ -17,9 +17,11 @@ function main
     if test "$current_port" = "$headphones"
         set next_port "$speakers"
         set ee_preset "$eq_correction_preset"
+        echo "Playing from speakers 🔈"
     else
         set next_port "$headphones"
         set ee_preset "$basic_preset"
+        echo "Playing in headphones 🎧"
     end
 
     set next_port_id (echo "$device_dump" | jq ".info.params.EnumRoute[] | select(.name == \"$next_port\") | .index")
